@@ -13,7 +13,7 @@
 | Reconciliation | 109 valid in-flight snapshots; final available=1, held=0, confirmed=1, total=2 |
 | Metrics | Final inventory gauges matched API state |
 | Dependency outage | Readiness 503, liveness 200, recovered readiness 200 |
-| Container build | Local Docker daemon unresponsive; GitHub Actions verification pending |
+| Container build | [Passed clean-checkout build and tests](https://github.com/Tejasj25/seat-reservation-at-scale/actions/runs/37107593313) |
 | Public cold start and burst | Pending deployment |
 | 20,000 simultaneous requests | Not tested |
 | Live public logs or recording | Pending deployment |

@@ -2,7 +2,7 @@
 
 JSON API using FastAPI and PostgreSQL. A reservation immediately confirms all requested seats or confirms none. Cancellation returns those seats to inventory. All money is integer paise. There is no payment-provider integration; `amount_paise` is the recorded booking amount.
 
-**Current delivery status:** [public repository](https://github.com/Tejasj25/seat-reservation-at-scale) created with incremental history. Both regression tests passed. The final local burst passed 20,000 requests at concurrency 200: one confirmation, 19,999 seat-taken declines, zero 5xx/transport errors, and 109 valid snapshots in 219.38 seconds. Database-outage and recovery checks passed. See [evidence](evidence/environment.json) and [deployment status](DEPLOYMENT.md). The public service still requires Render sign-in and deployment; no live URL is claimed.
+**Current delivery status:** [public repository](https://github.com/Tejasj25/seat-reservation-at-scale) created with incremental history. Both regression tests passed. The final local burst passed 20,000 requests at concurrency 200: one confirmation, 19,999 seat-taken declines, zero 5xx/transport errors, and 109 valid snapshots in 219.38 seconds. Database-outage and recovery checks passed. [GitHub Actions](https://github.com/Tejasj25/seat-reservation-at-scale/actions/runs/37107593313) also passed a clean-checkout Docker build and the full regression/outage checks. See [evidence](evidence/environment.json) and [deployment status](DEPLOYMENT.md). The public service still requires Render sign-in and deployment; no live URL is claimed.
 
 ## Run from a clean checkout
 

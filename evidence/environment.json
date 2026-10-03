@@ -3,7 +3,8 @@
   "tested_source_commit": "1f96ad41559d178b57411a48bfe3c45290a7e609",
   "environment": "Windows, Python 3.11, standalone PostgreSQL 17.11, loopback HTTP",
   "regression_suite": "2 passed in 16.16 seconds",
-  "container_execution": "GitHub Actions pending; local Docker daemon unresponsive",
+  "container_execution": "Passed clean-checkout Docker build, regression suite and database outage/recovery in GitHub Actions",
   "public_deployment": "pending",
-  "limit": "20,000 total requests at concurrency 200; not 20,000 simultaneous requests"
+  "limit": "20,000 total requests at concurrency 200; not 20,000 simultaneous requests",
+  "container_ci_url": "https://github.com/Tejasj25/seat-reservation-at-scale/actions/runs/37107593313"
 }
