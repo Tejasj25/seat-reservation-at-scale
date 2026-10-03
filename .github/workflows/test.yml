@@ -10,7 +10,7 @@ jobs:
           python-version: '3.11'
       - run: cp .env.example .env
       - run: docker compose up --build -d --wait
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.lock
       - run: python -m pytest -q
         env:
           ADMIN_TOKEN: local-admin-token-change-me-32-characters

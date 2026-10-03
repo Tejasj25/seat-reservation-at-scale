@@ -17,8 +17,8 @@ async def run(base_url, admin_token, requests, concurrency):
     async with httpx.AsyncClient(base_url=base_url.rstrip('/'), timeout=180, limits=limits) as client:
         admin = {'Authorization': f'Bearer {admin_token}'}
 
-        async def token(uid):
-            r = await client.post('/auth/tokens', headers=admin, json={'user_id': uid})
+        async def token(uid, transport=None):
+            r = await (transport or client).post('/auth/tokens', headers=admin, json={'user_id': uid})
             r.raise_for_status()
             return {'Authorization': 'Bearer '+r.json()['access_token']}
 
@@ -28,8 +28,8 @@ async def run(base_url, admin_token, requests, concurrency):
             assert r.status_code == 201, r.text
             return r.json()['id']
 
-        async def reserve(sid, labels, headers, key=None, **extra):
-            return await client.post(f'/shows/{sid}/reserve', headers=headers,
+        async def reserve(sid, labels, headers, key=None, transport=None, **extra):
+            return await (transport or client).post(f'/shows/{sid}/reserve', headers=headers,
                 json={'seats': labels, 'idempotency_key': key or str(uuid4()), **extra})
 
         async def state(sid):
@@ -76,12 +76,16 @@ async def run(base_url, admin_token, requests, concurrency):
 
         # Token setup is outside measured burst. Every contender has a unique identity.
         print(f'Preparing {requests} distinct users...', flush=True)
-        gate = asyncio.Semaphore(concurrency)
-        async def prepare(i):
-            async with gate:
-                return await token(f'burst-{run_id}-{i}')
         run_id = str(uuid4())
-        users = await asyncio.gather(*(prepare(i) for i in range(requests)))
+        users = [None] * requests
+        setup_jobs = iter(range(requests))
+        worker_limits = httpx.Limits(max_connections=1, max_keepalive_connections=1)
+        async def prepare_worker():
+            async with httpx.AsyncClient(base_url=base_url.rstrip('/'), timeout=180, limits=worker_limits) as transport:
+                for i in setup_jobs:
+                    users[i] = await token(f'burst-{run_id}-{i}', transport)
+        await asyncio.gather(*(prepare_worker() for _ in range(min(20, requests))))
+        print('User setup complete; starting measured hot-seat burst...', flush=True)
         sid = await show(['HOT','UNTOUCHED'])
         outcomes = Counter()
         latencies = []
@@ -95,27 +99,32 @@ async def run(base_url, admin_token, requests, concurrency):
                 snapshots += 1
                 await asyncio.sleep(0.1)
 
-        async def attempt(headers):
-            async with gate:
-                start = time.monotonic()
-                try:
-                    r = await reserve(sid,['HOT'],headers)
-                    if r.status_code == 201:
-                        outcomes['confirmed'] += 1
-                    elif r.status_code >= 500:
-                        outcomes['5xx'] += 1
-                    elif r.status_code == 409:
-                        outcomes[r.json().get('error','unexpected_409')] += 1
-                    else:
-                        outcomes[f'unexpected_{r.status_code}'] += 1
-                except httpx.HTTPError:
-                    outcomes['transport_error'] += 1
-                latencies.append(time.monotonic()-start)
+        async def attempt(headers, transport):
+            start = time.monotonic()
+            try:
+                r = await reserve(sid,['HOT'],headers,transport=transport)
+                if r.status_code == 201:
+                    outcomes['confirmed'] += 1
+                elif r.status_code >= 500:
+                    outcomes['5xx'] += 1
+                elif r.status_code == 409:
+                    outcomes[r.json().get('error','unexpected_409')] += 1
+                else:
+                    outcomes[f'unexpected_{r.status_code}'] += 1
+            except httpx.HTTPError:
+                outcomes['transport_error'] += 1
+            latencies.append(time.monotonic()-start)
+
+        jobs = iter(users)
+        async def burst_worker():
+            async with httpx.AsyncClient(base_url=base_url.rstrip('/'), timeout=180, limits=worker_limits) as transport:
+                for headers in jobs:
+                    await attempt(headers, transport)
 
         monitor = asyncio.create_task(observe())
         started = time.monotonic()
         try:
-            await asyncio.gather(*(attempt(h) for h in users))
+            await asyncio.gather(*(burst_worker() for _ in range(min(concurrency, requests))))
         finally:
             running = False
             await monitor
