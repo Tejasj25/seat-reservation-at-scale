@@ -210,9 +210,14 @@ async def reserve(show_id: UUID, body: ReserveInput, uid=Depends(user),
             if old['show_id'] != show_id or old['seats'] != body.seats:
                 return await outcome(conn, 'idempotency_conflict')
             return await outcome(conn, 'idempotent_replay', 200, reservation_json(old))
+        fingerprint = await (await conn.execute('SELECT show_id,seats FROM reservation_keys WHERE user_id=%s AND idempotency_key=%s', (uid,key))).fetchone()
+        if fingerprint and (fingerprint['show_id'] != show_id or fingerprint['seats'] != body.seats):
+            return await outcome(conn, 'idempotency_conflict')
         show = await (await conn.execute('SELECT * FROM shows WHERE id=%s', (show_id,))).fetchone()
         if not show:
             raise HTTPException(404, 'Show not found')
+        if not fingerprint:
+            await conn.execute('INSERT INTO reservation_keys VALUES(%s,%s,%s,%s)', (uid,key,show_id,body.seats))
         await lock(conn, 'user_show', uid, str(show_id))
         count = await (await conn.execute("SELECT coalesce(sum(cardinality(seats)),0) AS n FROM reservations WHERE user_id=%s AND show_id=%s AND status='confirmed'", (uid,show_id))).fetchone()
         if count['n'] + len(body.seats) > show['per_user_limit']:

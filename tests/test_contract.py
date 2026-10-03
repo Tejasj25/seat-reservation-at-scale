@@ -39,3 +39,16 @@ def test_auth_validation_and_key_scope():
         response = client.post(path, headers=user, json={'seats':['MISSING','B'],'idempotency_key':'unknown'})
         assert response.status_code == 404
         assert client.get(f'/shows/{show}').json()['counts']['available'] == 1
+        response = client.post(path, headers=user, json={'seats':['B'],'idempotency_key':'unknown'})
+        assert response.status_code == 409 and response.json()['error'] == 'idempotency_conflict'
+        response = client.post(path, headers=user, json={'seats':['B'],'idempotency_key':'fresh'})
+        assert response.status_code == 201
+        limited = client.post('/shows', headers=admin, json={**spec,'per_user_limit':1}).json()['id']
+        route = f'/shows/{limited}/reserve'
+        first = client.post(route, headers=user, json={'seats':['A'],'idempotency_key':'limited-first'})
+        assert first.status_code == 201
+        denied = client.post(route, headers=user, json={'seats':['B'],'idempotency_key':'limited-retry'})
+        assert denied.status_code == 409 and denied.json()['error'] == 'per_user_limit'
+        assert client.post(f"/reservations/{first.json()['reservation_id']}/cancel",headers=user).status_code == 200
+        retry = client.post(route, headers=user, json={'seats':['B'],'idempotency_key':'limited-retry'})
+        assert retry.status_code == 201

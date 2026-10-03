@@ -86,7 +86,7 @@ async def run(base_url, admin_token, requests, concurrency):
             async with httpx.AsyncClient(base_url=base_url.rstrip('/'), timeout=180, limits=worker_limits, verify=tls) as transport:
                 for i in setup_jobs:
                     users[i] = await token(f'burst-{run_id}-{i}', transport)
-        await asyncio.gather(*(prepare_worker() for _ in range(min(20, requests))))
+        await asyncio.gather(*(prepare_worker() for _ in range(min(100, concurrency, requests))))
         print('User setup complete; starting measured hot-seat burst...', flush=True)
         sid = await show(['HOT','UNTOUCHED'])
         outcomes = Counter()

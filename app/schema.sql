@@ -20,3 +20,9 @@ CREATE TABLE IF NOT EXISTS outcomes (
  reason text NOT NULL CHECK(reason IN ('seat_taken','per_user_limit','idempotent_replay','idempotency_conflict','unknown_seat')),
  created_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS reservation_keys (
+ user_id text NOT NULL, idempotency_key text NOT NULL,
+ show_id uuid NOT NULL REFERENCES shows(id), seats text[] NOT NULL,
+ PRIMARY KEY(user_id,idempotency_key)
+);
