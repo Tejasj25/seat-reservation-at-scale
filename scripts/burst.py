@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import ssl
 import time
 from uuid import uuid4
 
@@ -13,8 +14,9 @@ import httpx
 
 
 async def run(base_url, admin_token, requests, concurrency):
+    tls = ssl.create_default_context()
     limits = httpx.Limits(max_connections=concurrency, max_keepalive_connections=concurrency)
-    async with httpx.AsyncClient(base_url=base_url.rstrip('/'), timeout=180, limits=limits) as client:
+    async with httpx.AsyncClient(base_url=base_url.rstrip('/'), timeout=180, limits=limits, verify=tls) as client:
         admin = {'Authorization': f'Bearer {admin_token}'}
 
         async def token(uid, transport=None):
@@ -81,7 +83,7 @@ async def run(base_url, admin_token, requests, concurrency):
         setup_jobs = iter(range(requests))
         worker_limits = httpx.Limits(max_connections=1, max_keepalive_connections=1)
         async def prepare_worker():
-            async with httpx.AsyncClient(base_url=base_url.rstrip('/'), timeout=180, limits=worker_limits) as transport:
+            async with httpx.AsyncClient(base_url=base_url.rstrip('/'), timeout=180, limits=worker_limits, verify=tls) as transport:
                 for i in setup_jobs:
                     users[i] = await token(f'burst-{run_id}-{i}', transport)
         await asyncio.gather(*(prepare_worker() for _ in range(min(20, requests))))
@@ -91,12 +93,16 @@ async def run(base_url, admin_token, requests, concurrency):
         latencies = []
         running = True
         snapshots = 0
+        observation_errors = Counter()
 
         async def observe():
             nonlocal snapshots
             while running:
-                await state(sid)
-                snapshots += 1
+                try:
+                    await state(sid)
+                    snapshots += 1
+                except (httpx.HTTPError, AssertionError) as exc:
+                    observation_errors[type(exc).__name__] += 1
                 await asyncio.sleep(0.1)
 
         async def attempt(headers, transport):
@@ -117,7 +123,7 @@ async def run(base_url, admin_token, requests, concurrency):
 
         jobs = iter(users)
         async def burst_worker():
-            async with httpx.AsyncClient(base_url=base_url.rstrip('/'), timeout=180, limits=worker_limits) as transport:
+            async with httpx.AsyncClient(base_url=base_url.rstrip('/'), timeout=180, limits=worker_limits, verify=tls) as transport:
                 for headers in jobs:
                     await attempt(headers, transport)
 
@@ -135,11 +141,14 @@ async def run(base_url, admin_token, requests, concurrency):
         assert f'seats_confirmed{{show_id="{sid}"}} 1' in metric_response.text
         latencies.sort()
         report = {'base_url': base_url, 'requests': requests, 'concurrency': concurrency,
-            'seconds': round(time.monotonic()-started,2), 'outcomes': dict(outcomes),
+            'seconds': round(time.monotonic()-started,2),
+            'outcomes': {'confirmed': 0, 'seat_taken': 0, '5xx': 0, 'transport_error': 0, **dict(outcomes)},
             'latency_p50_ms': round(latencies[len(latencies)//2]*1000,2),
             'latency_p99_ms': round(latencies[min(len(latencies)-1,int(len(latencies)*.99))]*1000,2),
-            'snapshots_checked': snapshots, 'show_id': sid, 'reconciliation': final['counts']}
+            'snapshots_checked': snapshots, 'observation_errors': dict(observation_errors),
+            'show_id': sid, 'reconciliation': final['counts']}
         print(json.dumps(report, indent=2))
+        assert not observation_errors and snapshots > 0, report
         assert outcomes == {'confirmed': 1, 'seat_taken': requests-1}, report
         assert final['counts'] == {'available': 1, 'confirmed': 1, 'held': 0, 'total_seats': 2}
         return report
