@@ -5,3 +5,6 @@ __pycache__/
 *.log
 .tools/
 test-results/
+# Local learning and benchmark artifacts; not part of the take-home submission.
+postman/
+evidence/

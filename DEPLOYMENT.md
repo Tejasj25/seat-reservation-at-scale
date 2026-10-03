@@ -18,6 +18,4 @@
 | 20,000 simultaneous requests | Not tested |
 | Live public logs or recording | Pending deployment |
 
-Local evidence: [burst JSON](evidence/local-burst.json), [outage JSON](evidence/dependency-outage.json), [environment and tested commit](evidence/environment.json), and [compressed structured request logs](evidence/local-requests.jsonl.gz). These logs are from local synthetic traffic; they are not presented as public-service evidence.
-
 The local service uses Python 3.11 and isolated PostgreSQL 17.11 on Windows. The public deployment must be tested independently before submission. After deployment, replace this pending status with the actual service URL, `/metrics` URL, cold-start result, public burst report and live-log access/recording.
