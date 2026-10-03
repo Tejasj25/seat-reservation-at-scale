@@ -1,0 +1,34 @@
+name: real-postgres-correctness
+on: [push, pull_request]
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: cp .env.example .env
+      - run: docker compose up --build -d --wait
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+        env:
+          ADMIN_TOKEN: local-admin-token-change-me-32-characters
+      - name: Readiness fails closed without the database
+        run: |
+          docker compose stop db
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health/ready)" = 503
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health/live)" = 200
+          docker compose start db
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/health/ready; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - if: always()
+        run: docker compose logs --no-color > service.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-logs
+          path: service.log
