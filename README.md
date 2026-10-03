@@ -2,7 +2,7 @@
 
 JSON API using FastAPI and PostgreSQL. A reservation immediately confirms all requested seats or confirms none. Cancellation returns those seats to inventory. All money is integer paise. There is no payment-provider integration; `amount_paise` is the recorded booking amount.
 
-**Current delivery status:** the API runs locally against PostgreSQL and both regression tests passed, including the 500-contender concurrency suite. Source, local Git history, Docker/Render configuration and CI are prepared. Public repository: https://github.com/Tejasj25/seat-reservation-at-scale. Live deployment awaits hosting access. A 20,000-request local run passed at concurrency 200 with one winner and zero errors; the final revision is being rechecked. No public load results or live URL are claimed.
+**Current delivery status:** [public repository](https://github.com/Tejasj25/seat-reservation-at-scale) created with incremental history. Both regression tests passed. The final local burst passed 20,000 requests at concurrency 200: one confirmation, 19,999 seat-taken declines, zero 5xx/transport errors, and 109 valid snapshots in 219.38 seconds. Database-outage and recovery checks passed. See [evidence](evidence/environment.json) and [deployment status](DEPLOYMENT.md). The public service still requires Render sign-in and deployment; no live URL is claimed.
 
 ## Run from a clean checkout
 
@@ -81,10 +81,12 @@ Run the shorter real-database suite with `python -m pytest -q` against the runni
 
 ## Deployment
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Tejasj25/seat-reservation-at-scale)
+
 `render.yaml` is a Render Blueprint defining a Docker web service, PostgreSQL, generated admin/signing secrets, and `/health/ready` health checks. See [Render's Blueprint reference](https://render.com/docs/blueprint-spec) for the deployment configuration format.
 
-1. Create a public GitHub repository and push this directory with incremental commits.
-2. In Render, create a Blueprint from that repository and apply `render.yaml`.
+1. Open the Deploy to Render link above and sign in to your hosting account.
+2. Review and apply the services described in `render.yaml`.
 3. Copy `ADMIN_TOKEN` from the web service's environment into your local shell. Do not commit it.
 4. Verify `/health/ready`, run the burst against the assigned public service URL, and retain its JSON output.
 5. Record the actual repository URL, live URL, load evidence and log recording links in `DEPLOYMENT.md`.

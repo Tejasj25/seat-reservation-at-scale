@@ -1,0 +1,9 @@
+{
+  "recorded_at_utc": "2026-10-03T07:51:11.374972+00:00",
+  "tested_source_commit": "1f96ad41559d178b57411a48bfe3c45290a7e609",
+  "environment": "Windows, Python 3.11, standalone PostgreSQL 17.11, loopback HTTP",
+  "regression_suite": "2 passed in 16.16 seconds",
+  "container_execution": "GitHub Actions pending; local Docker daemon unresponsive",
+  "public_deployment": "pending",
+  "limit": "20,000 total requests at concurrency 200; not 20,000 simultaneous requests"
+}

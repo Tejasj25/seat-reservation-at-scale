@@ -1,19 +1,23 @@
 # Deployment evidence
 
-Public repository: https://github.com/Tejasj25/seat-reservation-at-scale
+- Public repository: https://github.com/Tejasj25/seat-reservation-at-scale
+- Deploy link: https://render.com/deploy?repo=https://github.com/Tejasj25/seat-reservation-at-scale
+- Public API URL: **pending Render authentication and deployment**.
+- CI: https://github.com/Tejasj25/seat-reservation-at-scale/actions
 
-Status: source published; public hosting still pending.
-
-| Deliverable | Evidence |
+| Check | Result |
 |---|---|
-| Public GitHub repository | Created; incremental history retained |
-| Public API URL | Not yet deployed; Render authentication required |
-| Readiness after cold start | Local startup passed; public cold start pending |
-| Live metrics URL | Pending deployment; route `/metrics` |
-| Public logs or screen recording | Not yet captured |
-| 20,000-request local burst | Prior revision passed: one winner, 19,999 declines, zero errors; final revision recheck running |
-| 20,000 simultaneous requests | Not yet tested |
-| Dependency outage | Readiness 503, liveness 200, recovery 200 |
+| Regression suite | 2 tests passed, including concurrency, auth, validation, cancellation and declined-key retry |
+| Final local burst | 20,000 requests, concurrency 200, 219.38 seconds |
+| Hot-seat outcomes | 1 confirmation; 19,999 seat-taken declines; 0 5xx; 0 transport errors |
+| Reconciliation | 109 valid in-flight snapshots; final available=1, held=0, confirmed=1, total=2 |
+| Metrics | Final inventory gauges matched API state |
+| Dependency outage | Readiness 503, liveness 200, recovered readiness 200 |
 | Container build | Local Docker daemon unresponsive; GitHub Actions verification pending |
+| Public cold start and burst | Pending deployment |
+| 20,000 simultaneous requests | Not tested |
+| Live public logs or recording | Pending deployment |
 
-The local service uses isolated PostgreSQL 17 on Windows. Regression tests passed against a real HTTP service and database. Final benchmark details will be saved under `evidence/`. Public deployment must be tested independently before submission.
+Local evidence: [burst JSON](evidence/local-burst.json), [outage JSON](evidence/dependency-outage.json), [environment and tested commit](evidence/environment.json), and [compressed structured request logs](evidence/local-requests.jsonl.gz). These logs are from local synthetic traffic; they are not presented as public-service evidence.
+
+The local service uses Python 3.11 and isolated PostgreSQL 17.11 on Windows. The public deployment must be tested independently before submission. After deployment, replace this pending status with the actual service URL, `/metrics` URL, cold-start result, public burst report and live-log access/recording.

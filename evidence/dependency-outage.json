@@ -1,0 +1,5 @@
+{
+  "readiness_database_down": 503,
+  "liveness_database_down": 200,
+  "readiness_after_recovery": 200
+}
